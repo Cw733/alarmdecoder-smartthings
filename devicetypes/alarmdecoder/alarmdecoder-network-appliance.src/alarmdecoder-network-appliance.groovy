@@ -120,7 +120,7 @@ metadata {
     definition (name: "AlarmDecoder network appliance", namespace: APPNAMESPACE, author: "Nu Tech Software Solutions, Inc.") {
         capability "Refresh"
 
-        attribute "panel_state", "enum", ["armed", "armed_stay", "armed_stay_exit", "disarmed", "alarming", "fire", "ready", "notready"]
+        attribute "panel_state", "enum", ["armed", "armed_stay", "armed_stay_exit", "armed_stay_instant", "armed_stay_instant_exit", "disarmed", "alarming", "fire", "ready", "notready"]
         attribute "armed", "enum", ["armed", "disarmed"]
         attribute "panic_state", "string"
         attribute "zoneStatus1", "string"
@@ -138,6 +138,7 @@ metadata {
 
         command "disarm"
         command "arm_stay"
+        command "arm_stay_instant"
         command "exit"
         command "arm_away"
         command "fire"
@@ -174,8 +175,10 @@ metadata {
             tileAttribute("device.panel_state", key: "PRIMARY_CONTROL") {
                 attributeState "armed", label: 'Armed', icon: "st.security.alarm.on", backgroundColor: "#ffa81e"
                 attributeState "armed_exit", label: 'Armed (exit-now)', icon: "st.nest.nest-away", backgroundColor: "#ffa81e"
-                attributeState "armed_stay", label: 'Armed (stay)', icon: "st.security.alarm.on", backgroundColor: "#ffa81e"
-                attributeState "armed_stay_exit", label: 'Armed (exit-now)', icon: "st.nest.nest-away", backgroundColor: "#ffa81e"
+                attributeState "armed_stay", label: 'Armed Stay', icon: "st.security.alarm.on", backgroundColor: "#ffa81e"
+                attributeState "armed_stay_instant", label: 'Armed Instant', icon: "st.security.alarm.on", backgroundColor: "#ffa81e"
+                attributeState "armed_stay_exit", label: 'Armed Stay (exit-now)', icon: "st.nest.nest-away", backgroundColor: "#ffa81e"
+                attributeState "armed_stay_instant_exit", label: 'Armed Instant (exit-now)', icon: "st.nest.nest-away", backgroundColor: "#ffa81e"
                 attributeState "disarmed", label: 'Disarmed', icon: "st.security.alarm.off", backgroundColor: "#79b821", defaultState: true
                 attributeState "alarming", label: 'Alarming!', icon: "st.home.home2", backgroundColor: "#ff4000"
                 attributeState "fire", label: 'Fire!', icon: "st.contact.contact.closed", backgroundColor: "#ff0000"
@@ -188,7 +191,9 @@ metadata {
             state "armed", action:"disarm", icon:"st.security.alarm.off", label: "DISARM"
             state "armed_exit", action:"disarm", icon:"st.security.alarm.off", label: "DISARM"
             state "armed_stay", action:"disarm", icon:"st.security.alarm.off", label: "DISARM"
+            state "armed_stay_instant", action:"disarm", icon:"st.security.alarm.off", label: "DISARM"
             state "armed_stay_exit", action:"disarm", icon:"st.security.alarm.off", label: "DISARM"
+            state "armed_stay_instant_exit", action:"disarm", icon:"st.security.alarm.off", label: "DISARM"
             state "disarmed", action:"arm_away", icon:"st.security.alarm.on", label: "AWAY"
             state "alarming", action:"disarm", icon:"st.security.alarm.off", label: "DISARM"
             state "fire", action:"disarm", icon:"st.security.alarm.off", label: "DISARM"
@@ -200,11 +205,27 @@ metadata {
             state "armed", action:"disarm", icon:"st.security.alarm.off", label: "DISARM"
             state "armed_exit", action:"disarm", icon:"st.security.alarm.off", label: "DISARM"
             state "armed_stay", action:"exit", icon:"st.nest.nest-away", label: "EXIT"
+            state "armed_stay_instant", action:"disarm", icon:"st.security.alarm.off", label: "DISARM"
             state "armed_stay_exit", action:"disarm", icon:"st.security.alarm.off", label: "DISARM"
+            state "armed_stay_instant_exit", action:"disarm", icon:"st.security.alarm.off", label: "DISARM"
             state "disarmed", action:"arm_stay", icon:"st.Home.home4", label: "STAY"
             state "alarming", action:"disarm", icon:"st.security.alarm.off", label: "DISARM"
             state "fire", action:"disarm", icon:"st.security.alarm.off", label: "DISARM"
             state "ready", action:"arm_stay", icon:"st.security.alarm.on", label: "STAY"
+            state "notready", action:"disarm", icon:"st.security.alarm.off", label: "DISARM"
+        }
+        
+         standardTile("stay_instant_disarm", "device.panel_state", inactiveLabel: false, width: 2, height: 2) {
+            state "armed", action:"disarm", icon:"st.security.alarm.off", label: "DISARM"
+            state "armed_exit", action:"disarm", icon:"st.security.alarm.off", label: "DISARM"
+            state "armed_stay", action:"exit", icon:"st.nest.nest-away", label: "EXIT"
+            state "armed_stay_instant", action:"disarm", icon:"st.security.alarm.off", label: "DISARM"
+            state "armed_stay_exit", action:"disarm", icon:"st.security.alarm.off", label: "DISARM"
+            state "armed_stay_instant_exit", action:"disarm", icon:"st.security.alarm.off", label: "DISARM"
+            state "disarmed", action:"arm_stay_instant", icon:"st.Home.home4", label: "INSTANT"
+            state "alarming", action:"disarm", icon:"st.security.alarm.off", label: "DISARM"
+            state "fire", action:"disarm", icon:"st.security.alarm.off", label: "DISARM"
+            state "ready", action:"arm_stay_instant", icon:"st.security.alarm.on", label: "INSTANT"
             state "notready", action:"disarm", icon:"st.security.alarm.off", label: "DISARM"
         }
 
@@ -327,7 +348,7 @@ metadata {
         }
 
         main(["status"])
-        details(["status", "arm_disarm", "stay_disarm", "panic", "fire", "aux", "zoneStatus1", "zoneStatus2", "zoneStatus3", "zoneStatus4", "zoneStatus5", "zoneStatus6", "zoneStatus7", "zoneStatus8", "zoneStatus9", "zoneStatus10", "zoneStatus11", "zoneStatus12", "refresh"])
+        details(["status", "arm_disarm", "stay_disarm", "stay_instant_disarm", "panic", "fire", "aux", "zoneStatus1", "zoneStatus2", "zoneStatus3", "zoneStatus4", "zoneStatus5", "zoneStatus6", "zoneStatus7", "zoneStatus8", "zoneStatus9", "zoneStatus10", "zoneStatus11", "zoneStatus12", "refresh"])
     }
 }
 
@@ -348,6 +369,7 @@ def updated() {
     state.panel_ready = true
     state.panel_armed = false
     state.panel_armed_stay = false
+    state.panel_armed_stay_instant = false
     state.panel_exit = false
     state.panel_fire_detected = false
     state.panel_alarming = false
@@ -418,6 +440,7 @@ def parse_xml(String headers, String body) {
     resultMap['panel_alarming'] = xmlResult.property.panelstate.panel_alarming.toBoolean()
     resultMap['panel_armed'] = xmlResult.property.panelstate.panel_armed.toBoolean()
     resultMap['panel_armed_stay'] = xmlResult.property.panelstate.panel_armed_stay.toBoolean()
+    resultMap['panel_armed_stay_instant'] = xmlResult.property.panelstate.panel_armed_stay_instant.toBoolean()
     resultMap['panel_exit'] = xmlResult.property.panelstate.panel_exit.toBoolean()
     resultMap['panel_bypassed'] = xmlResult.property.panelstate.panel_bypassed.toBoolean()
     resultMap['panel_fire_detected'] = xmlResult.property.panelstate.panel_fire_detected.toBoolean()
@@ -429,6 +452,12 @@ def parse_xml(String headers, String body) {
     resultMap['panel_perimeter_only'] = xmlResult.property.panelstate.panel_perimeter_only.toBoolean()
     resultMap['panel_type'] = xmlResult.property.panelstate.panel_type.text()
     resultMap['panel_chime'] = xmlResult.property.panelstate.panel_chime.toBoolean()
+    
+    if (resultMap['panel_entry_delay_off'] && resultMap['panel_armed_stay']) {
+    	resultMap['panel_armed_stay']=false
+        resultMap['panel_armed_stay_instant']=true
+    }
+   
 
     // build list of faulted zones unpack xml
     // only update zone list on zone change events
@@ -586,6 +615,26 @@ def arm_stay() {
         keys = "<S4>"
     else
         log.warn("--- arm_stay: unknown panel_type.")
+
+    return send_keys(keys)
+}
+
+/**
+ * arm_stay_instant()
+ * Sends an arm stay instant command to the panel
+ */
+def arm_stay_instant() {
+    log.trace("--- arm_stay_instant")
+
+    def user_code = _get_user_code()
+    def keys = ""
+
+    if (settings.panel_type == "ADEMCO")
+        keys = "${user_code}7"
+    else if (settings.panel_type == "DSC")
+        keys = "<S4>"
+    else
+        log.warn("--- arm_stay_instant: unknown panel_type.")
 
     return send_keys(keys)
 }
@@ -844,7 +893,7 @@ def update_state(data) {
 
 	if (skipstate != true) {
          // Get our armed state from our new state data
-        def armed = data.panel_armed || (data.panel_armed_stay != null && data.panel_armed_stay == true)
+        def armed = data.panel_armed || (data.panel_armed_stay != null && data.panel_armed_stay == true)|| (data.panel_armed_stay_instant != null && data.panel_armed_stay_instant == true)
 
         def panel_state = (data.panel_ready ? "ready" : "notready")
 
@@ -855,13 +904,21 @@ def update_state(data) {
         // If armed update internal UI state to exit mode and armed state
         if (armed) {
             if ( data.panel_exit ) {
-                if ( data.panel_armed_stay ) {
+                if ( data.panel_armed_stay) {
                     panel_state = "armed_stay_exit"
+                } else if (data.panel_armed_stay_instant) {
+                	panel_state = "armed_stay_instant_exit"
                 } else {
                     panel_state = "armed_exit"
                 }
             } else {
-                panel_state = (data.panel_armed_stay ? "armed_stay" : "armed")
+            	if (data.panel_armed_stay_instant) {
+                	panel_state = "armed_stay_instant"
+                } else if (data.panel_armed_stay) {
+                	panel_state = "armed_stay"
+                } else {
+                	panel_state = "armed"
+                }
             }
         }
 
@@ -883,6 +940,16 @@ def update_state(data) {
         if (forceguiUpdate || data.panel_armed_stay != state.panel_armed_stay) {
             if(data.panel_armed_stay) {
                 events << createEvent(name: "arm-stay-set", value: "on", displayed: true, isStateChange: true)
+                events << createEvent(name: "arm-stay-instant-set", value: "off", displayed: true, isStateChange: true)
+                events << createEvent(name: "arm-away-set", value: "off", displayed: true, isStateChange: true)
+            }
+        }
+        
+         // If armed STAY INSTANT changes data.panel_armed_stay
+        if (forceguiUpdate || data.panel_armed_stay_instant != state.panel_armed_stay_instant) {
+            if(data.panel_armed_stay_instant) {
+                events << createEvent(name: "arm-stay-set", value: "off", displayed: true, isStateChange: true)
+                events << createEvent(name: "arm-stay-instant-set", value: "on", displayed: true, isStateChange: true)
                 events << createEvent(name: "arm-away-set", value: "off", displayed: true, isStateChange: true)
             }
         }
@@ -892,12 +959,13 @@ def update_state(data) {
            if(!armed) {
                events << createEvent(name: "arm-away-set", value: "off", displayed: true, isStateChange: true)
                events << createEvent(name: "arm-stay-set", value: "off", displayed: true, isStateChange: true)
+               events << createEvent(name: "arm-stay-instant-set", value: "off", displayed: true, isStateChange: true)
                events << createEvent(name: "disarm-set", value: "off", displayed: true, isStateChange: true)
            } else {
                // If armed AWAY changes data.panel_armed_away
                if(!data.panel_armed_stay)
-                   events << createEvent(name: "arm-away-set", value: "on", displayed: true, isStateChange: true)
-               events << createEvent(name: "disarm-set", value: "on", displayed: true, isStateChange: true)
+                 events << createEvent(name: "arm-away-set", value: "on", displayed: true, isStateChange: true)
+                 events << createEvent(name: "disarm-set", value: "on", displayed: true, isStateChange: true)
            }
         }
 
@@ -927,10 +995,10 @@ def update_state(data) {
         if (armed)
         {
             alarm_status = "away"
-            if (data.panel_armed_stay == true)
+            if (data.panel_armed_stay == true || data.panel_armed_stay_instant == true)
                 alarm_status = "stay"
         }
-
+        
         // Create an event to notify Smart Home Monitor in our service.
         // "enum", ["off", "stay", "away"]
         if (forceguiUpdate || alarm_status != state.alarm_status)
@@ -954,6 +1022,7 @@ def update_state(data) {
         state.panel_ready = data.panel_ready
         state.panel_armed = data.panel_armed
         state.panel_armed_stay = data.panel_armed_stay
+        state.panel_armed_stay_instant = data.panel_armed_stay_instant
         state.panel_exit = data.panel_exit
         state.panel_fire_detected = data.panel_fire_detected
         state.panel_alarming = data.panel_alarming

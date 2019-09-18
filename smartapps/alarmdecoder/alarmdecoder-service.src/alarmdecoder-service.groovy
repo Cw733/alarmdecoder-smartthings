@@ -40,7 +40,7 @@ import groovy.transform.Field
 /*
  * System Settings
  */
-@Field debug = false
+@Field debug = true
 @Field max_sensors = 20
 @Field nocreatedev = false
 @Field create_disarm = true
@@ -134,6 +134,7 @@ preferences {
     page(name: "page_add_new_rfx", title: titles("page_add_new_rfx"), content: "page_add_new_rfx", install: false, uninstall: false)
     page(name: "page_add_new_rfx_confirm", title: titles("page_add_new_rfx_confirm", buildcidlabel()), content: "page_add_new_rfx_confirm", install: false, uninstall: false)
     page(name: "page_remove_selected_rfx", title: titles("page_remove_selected_rfx"), content: "page_remove_selected_rfx", install: false, uninstall: false)
+    page(name: "page_shm_configuration", title: titles("page_shm_configuration"), content: "page_shm_configuration", install: false, uninstall: false)
 }
 
 /*
@@ -201,6 +202,10 @@ def titles(String name, Object... args) {
     "input_rfx_loop1": "Loop 1: Enter 1 to monitor or ? to ignore",
     "input_rfx_loop2": "Loop 2: Enter 1 to monitor or ? to ignore",
     "input_rfx_loop3": "Loop 3: Enter 1 to monitor or ? to ignore",
+    
+    /*SHM Configuration */
+    "page_shm_configuration": "Configure SHM",
+    "input_shm_away_mode": "Tap to select Normal for entry delay, Instant for no entry delay"
   ]
   if (args)
       return String.format(page_titles[name], args)
@@ -223,6 +228,7 @@ def descriptions(name, Object... args) {
     "input_cid_number": "Tap to select",
     "href_rfx_management": "Tap to manage RFX virtual switches",
     "href_remove_selected_rfx": "Tap to remove selected virtual switches",
+    "href_shm_configuration": "Tap to configure SHM integration",
     "href_add_new_rfx": "Tap to add new RFX switch",
     "href_add_new_rfx_confirm": "Tap to confirm and add",
     "input_rfx_devices": "Tap to select",
@@ -290,6 +296,9 @@ def page_main() {
             }
             section("") {
                 href(name: "href_rfx_management", required: false, page: "page_rfx_management", title: titles("page_rfx_management"), description: descriptions("href_rfx_management"))
+            }
+            section("") {
+                href(name: "href_shm_configuration", required: false, page: "page_shm_configuration", title: titles("page_shm_configuration"), description: descriptions("href_shm_configuration"))
             }
         }
     }
@@ -700,6 +709,22 @@ def page_remove_all(params) {
         }
     }
 }
+    
+    
+ /**
+ * Page page_shm_configuration generator.
+ */
+def page_shm_configuration() {
+
+	return dynamicPage(name: "page_shm_configuration") {
+        section {
+            paragraph titles("section_rfx_names")
+            input(name: "input_shm_away_mode", type: "enum", required: true, options: ["Normal", "Instant"], defaultValue: "Normal" , submitOnChange: true, title: titles("input_shm_away_mode"))
+        }
+     }
+ }
+
+
 
 /**
  * Page page_discover_devices generator. Called periodically to refresh content of the page.
@@ -965,7 +990,9 @@ def actionButton(id) {
     if (id.contains(":armAway")) {
         d.arm_away()
     }
-    if (id.contains(":armStay")) {
+    if (id.contains(":armStayInstant")) {
+        d.arm_stay_instant()
+    } else if (id.contains("armStay")) {
         d.arm_stay()
     }
     if (id.contains(":chimeMode")) {
@@ -1056,6 +1083,26 @@ def armStaySet(evt) {
     d = getChildDevice("${getDeviceKey()}:armStayStatus")
     if (!d) {
         log.info("armStaySet: Could not find 'armStayStatus' device.")
+    } else {
+        _sendEventTranslate(d, evt.value)
+    }
+}
+
+/**
+ * send event to armStayInstant device to set state
+ */
+def armStayInstantSet(evt) {
+    if (debug) log.debug("armStayInstantSet ${evt.value}")
+    def d = getChildDevice("${getDeviceKey()}:armStayInstant")
+    if (!d) {
+        log.info("armStayInstantSet: Could not find 'armStayInstant' device.")
+    } else {
+         d.sendEvent(name: "switch", value: evt.value, isStateChange: true, filtered: true)
+    }
+
+    d = getChildDevice("${getDeviceKey()}:armStayInstantStatus")
+    if (!d) {
+        log.info("armStayInstantSet: Could not find 'armStayInstantStatus' device.")
     } else {
         _sendEventTranslate(d, evt.value)
     }
@@ -1406,8 +1453,12 @@ def monitorAlarmHandler(evt) {
                     }
                     else if (evt.value == "stay" || evt.value == "armHome") {
                         // do not send if already in that state.
-                        if(!device.getStateValue("panel_armed") && !device.getStateValue("panel_armed_stay")) {
-                            device.arm_stay()
+                        if(!device.getStateValue("panel_armed") && !device.getStateValue("panel_armed_stay") && !device.getStateValue("panel_armed_stay_instant")) {
+                            if (settings.input_shm_away_mode=="Normal") {
+                            	device.arm_stay()
+                            } else {
+                            	device.arm_stay_instant()
+                            }
                         } else {
                             log.trace "monitorAlarmHandler -- no send arm_stay already set"
                         }
@@ -1699,10 +1750,13 @@ def addExistingDevices() {
         {
             // Add Arm Stay switch/indicator combo if it does not exist.
             addAD2VirtualDevices("armStay", "Stay", false, true, true)
+            
+             // Add Arm Stay Instant switch/indicator combo if it does not exist.
+            addAD2VirtualDevices("armStayInstant", "Stay Instant", false, true, true)
 
             // Add Arm Away switch/indicator combo if it does not exist.
             addAD2VirtualDevices("armAway", "Away", false, true, true)
-
+            
             // Add Exit switch/indicator combo if it does not exist.
             addAD2VirtualDevices("exit", "Exit", false, true, true)
 
@@ -1803,6 +1857,9 @@ private def configureDeviceSubscriptions() {
 
     // subscribe to arm-away handler
     subscribe(device, "arm-away-set", armAwaySet, [filterEvents: false])
+    
+    // subscribe to arm-stay-instant handler
+    subscribe(device, "arm-stay-instant-set", armStayInstantSet, [filterEvents: false])
 
     // subscribe to arm-stay handler
     subscribe(device, "arm-stay-set", armStaySet, [filterEvents: false])
